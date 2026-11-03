@@ -1,0 +1,13 @@
+# Relative rate structure (taxable shares) of ST_SALES; illustrative statutory rate 0.0625
+commodity,household,intermediate,investment,government
+AGR,0.0,0.05,0.0,0
+MIN,0.0,0.1,0.0,0
+UTL,0.15,0.3,0.0,0
+CON,0.0,0.05,0.1,0
+MFG,0.75,0.25,0.6,0
+TRD,0.7,0.2,0.6,0
+TRN,0.05,0.05,0.1,0
+FIN,0.0,0.0,0.0,0
+REA,0.0,0.0,0.0,0
+BUS,0.25,0.25,0.3,0
+PSV,0.25,0.05,0.0,0

@@ -1,0 +1,6 @@
+# jobs: thousands; intergov_mode: transfers this government pays to other governments are a
+# 'share' of its revenue (STAMP eqs. 26-27) or 'fixed' in real terms (exogenous grants)
+government,jobs,intergov_mode
+FED,200,fixed
+STATE,330,share
+LOCAL,1350,share

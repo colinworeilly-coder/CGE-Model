@@ -1,0 +1,55 @@
+# Account roles for the illustrative state SAM (see docs/data.md).
+name: Illustrative state (stylized, not official data)
+units: billion USD
+dollar_scale: 1.0e9          # multiply SAM values by this to get dollars
+base_year: 2024
+
+sectors: [AGR, MIN, UTL, CON, MFG, TRD, TRN, FIN, REA, BUS, PSV]
+sector_names:
+  AGR: Agriculture, forestry, fishing
+  MIN: Mining, oil and gas extraction
+  UTL: Utilities
+  CON: Construction
+  MFG: Manufacturing (incl. refining, food processing)
+  TRD: Wholesale and retail trade
+  TRN: Transportation and warehousing
+  FIN: Finance and insurance
+  REA: Real estate and housing services
+  BUS: Information, professional and business services
+  PSV: Health, education, leisure and other services
+
+factors:
+  LAB: labor
+  CAP: capital
+
+households: [H1, H2, H3, H4, H5, H6, H7]
+enterprises: [ENT]
+governments: [FED, STATE, LOCAL]
+investment: INV
+row: ROW                      # rest of the United States plus foreign countries
+
+# Tax instruments.  base: sales | output | factor | property | income
+#  - sales: ad valorem on purchases; relative structure in tax_structure/<TAX>.csv
+#  - output: ad valorem on gross output (gross receipts / margins taxes)
+#  - factor: ad valorem on payments to `factor` (payroll, CIT, franchise ...)
+#  - property: rate on the value of the business capital stock
+#  - income: on household income; components: labor, capital, transfers;
+#            `deductible` lists taxes deductible from this tax's base (SALT)
+taxes:
+  FED_PIT:     {base: income, government: FED, components: [labor, capital, transfers],
+                deductible: [ST_PIT, LO_PROPR], description: Federal personal income tax}
+  FED_SSC:     {base: income, government: FED, components: [labor],
+                description: Employee social insurance contributions}
+  FED_PAYROLL: {base: factor, factor: LAB, government: FED, description: Employer payroll taxes}
+  FED_CIT:     {base: factor, factor: CAP, government: FED, description: Federal corporate income tax}
+  FED_EXC:     {base: sales, government: FED, description: Federal excises (fuel, alcohol, tobacco)}
+  ST_SALES:    {base: sales, government: STATE, description: State general sales and use tax}
+  ST_MFUEL:    {base: sales, government: STATE, description: State motor fuels tax}
+  ST_EXC:      {base: sales, government: STATE, description: Motor vehicle sales, alcohol and cigarette taxes}
+  ST_FRAN:     {base: output, government: STATE, description: Franchise (margins) tax}
+  ST_SEV:      {base: output, government: STATE, description: Oil and gas severance taxes}
+  ST_PIT:      {base: income, government: STATE, components: [labor, capital],
+                description: State personal income tax (zero in the base year)}
+  LO_PROPR:    {base: sales, government: LOCAL, description: Local residential property tax (on housing services)}
+  LO_PROPB:    {base: property, government: LOCAL, description: Local business property tax}
+  LO_SALES:    {base: sales, government: LOCAL, description: Local sales taxes}

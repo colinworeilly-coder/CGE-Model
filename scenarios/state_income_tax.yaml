@@ -1,0 +1,16 @@
+# STAMP experiment 1: institute a state personal income tax.
+# Brackets and standard deductions as in the STAMP report (2004 dollars, applied as stated;
+# set threshold_scale: 1.67 to express them in 2024 dollars). The schedule is converted to
+# effective average and marginal rates for each income class (regcge.tools.tax_schedule).
+# The new tax is deductible against the federal income tax for itemizers (accounts.yaml).
+name: state_income_tax
+description: Institute a state income tax (2% / 3% / 4% brackets, federal-level standard deductions).
+start: 2025
+closure:
+  governments: {STATE: spending_adjusts}   # new revenue is spent (STAMP); try deficit_adjusts or transfers_adjust
+shocks:
+  - tax: ST_PIT
+    schedule:
+      brackets: [[0, 0.02], [10000, 0.03], [75000, 0.04]]
+      standard_deduction: {single: 4750, head_of_household: 7000, married: 9500}
+      threshold_scale: 1.0

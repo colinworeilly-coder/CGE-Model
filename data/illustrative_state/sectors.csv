@@ -1,0 +1,18 @@
+# Per-sector parameters. Elasticities follow Texas-STAMP Table 2 where an analogue exists.
+# sigma_va: capital-labor substitution (STAMP SIGMA); sigma_top: value added vs intermediates (0 = Leontief)
+# sigma_armington: domestic vs imported (STAMP ETAM); export_elasticity: |price elasticity| of export demand (STAMP ETAE)
+# cet_elasticity: domestic vs export transformation (inf = perfect substitutes, as in STAMP)
+# depreciation: annual rate; inv_elasticity: investment response to relative return (STAMP 0.6)
+# inv_share: investment by sector of destination (blank = proportional to capital income); jobs: thousands
+sector,sigma_va,sigma_top,sigma_armington,cet_elasticity,export_elasticity,depreciation,inv_elasticity,inv_share,jobs
+AGR,0.90,0,1.5,inf,1.65,0.060,0.6,,250
+MIN,0.80,0,1.5,inf,1.65,0.080,0.6,,240
+UTL,0.80,0,1.5,inf,1.65,0.040,0.6,,60
+CON,0.90,0,1.5,inf,1.65,0.100,0.6,,880
+MFG,0.85,0,1.5,inf,1.65,0.080,0.6,,920
+TRD,0.90,0,0.5,inf,0.65,0.070,0.6,,1950
+TRN,0.90,0,1.5,inf,1.65,0.070,0.6,,690
+FIN,0.90,0,1.5,inf,1.65,0.060,0.6,,640
+REA,0.90,0,1.5,inf,1.65,0.025,0.6,,290
+BUS,0.80,0,1.5,inf,1.65,0.120,0.6,,2500
+PSV,0.80,0,0.5,inf,0.65,0.060,0.6,,3700

@@ -1,0 +1,20 @@
+# Model specification for the illustrative state.
+base_year: 2024
+periods: 11                 # t = 0 (base year 2024) ... 10 (2034)
+growth:
+  population: 0.015         # households and labor endowment
+  productivity: 0.010       # labor-augmenting; per-capita quantities grow at this rate
+inflation: 0.02             # used only to express results in nominal dollars
+discount_rate: 0.04         # for present values of welfare changes
+numeraire: row_price        # row_price (rest-of-world prices fixed) | cpi
+closures:
+  governments: {FED: deficit_adjusts, STATE: spending_adjusts, LOCAL: spending_adjusts}
+  tax_adjusts: {}           # e.g. {LOCAL: LO_SALES} when LOCAL uses tax_adjusts
+  savings_investment: open_capital   # open_capital (STAMP) | savings_driven
+  capital: sector_specific  # sector_specific (recursive dynamics) | mobile (long-run static)
+  labor_supply: endogenous  # endogenous | exogenous
+  migration: true
+  migration_driver: real_income      # real_income | utility
+solver:
+  method: auto              # auto (Newton, then IPOPT) | newton | ipopt
+  tol: 1.0e-8

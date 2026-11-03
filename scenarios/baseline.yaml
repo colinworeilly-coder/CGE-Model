@@ -1,0 +1,4 @@
+# No policy change: the scenario path reproduces the baseline exactly (useful as a check).
+name: baseline
+description: No policy change.
+shocks: []

@@ -1,0 +1,15 @@
+# School-finance style swap: cut local property taxes by 25% and let the local sales tax rate
+# adjust so that local governments keep their real spending and saving (equal yield).
+name: property_to_sales_swap
+description: Cut local residential and business property taxes by 25%, financed by a higher local sales tax.
+start: 2025
+closure:
+  governments: {LOCAL: tax_adjusts}
+  tax_adjusts: {LOCAL: LO_SALES}
+shocks:
+  - tax: LO_PROPR
+    op: scale
+    value: 0.75
+  - tax: LO_PROPB
+    op: scale
+    value: 0.75

@@ -1,0 +1,13 @@
+# STAMP experiment 2: extend the state sales tax to household and business purchases of services.
+# Services become fully taxable at the 6.25% statutory rate (residential rent, REA, stays exempt).
+name: sales_tax_services
+description: Extend the 6.25% state sales tax to household and business purchases of services.
+start: 2025
+closure:
+  governments: {STATE: spending_adjusts}
+shocks:
+  - tax: ST_SALES
+    purchaser: [household, intermediate]
+    commodities: [UTL, TRN, FIN, BUS, PSV]
+    op: set
+    value: 0.0625
