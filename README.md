@@ -36,7 +36,9 @@ in [`docs/model.md`](docs/model.md).
 pip install -e ".[dev]"             # numpy, pandas, scipy, casadi (bundles IPOPT), pyyaml, openpyxl
 python -m regcge check              # calibrate; check benchmark replication, closures, baseline
 python -m regcge run scenarios/state_income_tax.yaml scenarios/sales_tax_services.yaml
-pytest                              # 40 tests (about 15 s)
+python -m regcge template --out my_state   # blank, annotated SAM workbook (starter accounts; see docs/data.md)
+python -m regcge validate --data my_state  # check a filled dataset: lists every problem at once
+pytest                              # 48 tests (about 20 s)
 ```
 
 Results are written to `results/` as an Excel workbook, a Markdown report and
@@ -58,7 +60,7 @@ comp.to_excel("results/services.xlsx")
 | Path | Contents |
 |---|---|
 | `regcge/core/` | thin modeling layer on CasADi: variables, parameters, equations, closure diagnostics, solvers |
-| `regcge/data/` | SAM I/O, RAS and cross-entropy balancing, dataset loader with defaults, SAM disaggregation |
+| `regcge/data/` | SAM I/O, RAS and cross-entropy balancing, dataset loader with defaults, SAM disaggregation, SAM rulebook, template generator, validator |
 | `regcge/model/calibrate.py` | benchmark extraction and calibration from the SAM |
 | `regcge/model/blocks/` | equation blocks: prices, production, trade, factors, taxes, households, migration, government, investment, markets |
 | `regcge/model/closures.py`, `dynamics.py` | closures; recursive baseline and scenario paths |
@@ -97,7 +99,7 @@ Run `python examples/run_stamp_experiments.py` for full tables, and
 
 | Task | How |
 |---|---|
-| Use your own state, sectors or households | Build a balanced SAM and `accounts.yaml` (see [`docs/data.md`](docs/data.md)); everything is read from the data |
+| Use your own state, sectors or households | Declare accounts in `accounts.yaml`, then `python -m regcge template --accounts accounts.yaml --out my_state` writes an annotated Excel template (allowed cells marked, live balance checks, cell guide, parameter sheets). Fill it in, then run `python -m regcge validate --data my_state`, which lists every problem at once. See [`docs/data.md`](docs/data.md) |
 | Add a tax instrument | Add an account to the SAM and declare it in `accounts.yaml` with its base type; for sales taxes, add a structure file |
 | Change elasticities | Edit `sectors.csv` / `households.csv`, or override per scenario with `parameters:` |
 | Change closures | `model.yaml` defaults, or per scenario with `closure:`; see [`docs/closures_scenarios.md`](docs/closures_scenarios.md) |

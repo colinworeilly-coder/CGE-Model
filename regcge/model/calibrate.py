@@ -165,51 +165,14 @@ class Calibration:
 
     # ----------------------------------------------------- structural checks
     def _check_cells(self):
-        """Raise on SAM cells the model has no interpretation for."""
-        S, acc = self.S, self.ds.accounts
-        A, H, G = self.sets["A"].labels, self.sets["H"].labels, self.sets["G"].labels
-        F = list(acc["factors"].keys())
-        K = self.sets["K"].labels
-        ent = [self.ent] if self.ent else []
-        allowed_cols = {}
-        for a in A:
-            allowed_cols[a] = set(A) | set(F) | set(K) | {self.row}
-        for h in H:
-            allowed_cols[h] = set(A) | set(K) | {self.inv, self.row}
-        for e in ent:
-            allowed_cols[e] = set(H) | set(G) | {self.inv, self.row}
-        for g in G:
-            allowed_cols[g] = set(A) | set(F) | set(K) | set(H) | set(G) | set(ent) | {self.inv, self.row}
-        for f in F:
-            allowed_cols[f] = set(H) | set(ent) | set(G) | {self.row}
-        for k in K:
-            allowed_cols[k] = set(G)
-        allowed_cols[self.inv] = set(A) | set(K)
-        allowed_cols[self.row] = set(A) | set(F) | set(H) | set(ent) | set(G) | {self.inv}
-        bad = []
-        for col, rows in allowed_cols.items():
-            nz = S.index[S[col].abs() > 1e-12]
-            for r in nz:
-                if r not in rows:
-                    bad.append(f"{r} <- {col} ({S.loc[r, col]:.4g})")
-        if bad:
+        """Raise on SAM cells the model has no interpretation for (shared rules
+        in regcge.data.rules; the validator reports the same issues without raising)."""
+        from ..data.rules import disallowed_nonzero, tax_payer_issues
+        issues = disallowed_nonzero(self.S, self.ds.accounts, raw=False) + tax_payer_issues(self.S, self.ds.accounts)
+        if issues:
             raise CalibrationError("SAM cells without a model interpretation (row <- column):\n  "
-                                   + "\n  ".join(bad[:30]))
-        # tax payers must match the tax base
-        for k, spec in self.taxes.items():
-            b = spec["base"]
-            payers = S.columns[S.loc[k].abs() > 1e-12]
-            ok = {"sales": set(A) | set(H) | set(G) | {self.inv},
-                  "output": set(A), "factor": set(A) | set(G), "property": set(A),
-                  "income": set(H)}[b]
-            wrong = [p for p in payers if p not in ok]
-            if wrong:
-                raise CalibrationError(f"Tax {k} (base {b}) is paid by accounts {wrong}, which is inconsistent with its base")
-            if b == "factor":
-                f = spec["factor"]
-                for p in payers:
-                    if S.loc[f, p] <= 0:
-                        raise CalibrationError(f"Factor tax {k} paid by {p}, which uses no {f}")
+                                   + "\n  ".join(f"{i.row} <- {i.col} ({i.value:.4g}): {i.message}"
+                                                  for i in issues[:30]))
 
     # ================================================================ sectors
     def _sectors(self):

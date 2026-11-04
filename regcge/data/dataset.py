@@ -85,10 +85,38 @@ def _deep_update(base: dict, upd: dict) -> dict:
     return out
 
 
-def _read_table(path: Path, index_name: str, defaults: dict, labels: list[str]) -> pd.DataFrame:
-    if path.exists():
-        df = pd.read_csv(path, index_col=0, comment="#")
-        df.index = df.index.astype(str).str.strip()
+SAM_FILES = ("sam.csv", "sam.xlsx", "template.xlsx")
+
+
+def structure_sheet_name(tax: str) -> str:
+    """Worksheet name of a tax-structure table in a template workbook."""
+    return f"tax_structure_{tax}"[:31]
+
+
+def find_sam(directory: Path) -> Path:
+    for name in SAM_FILES:
+        if (directory / name).exists():
+            return directory / name
+    raise FileNotFoundError(f"No SAM found in {directory} (expected one of {', '.join(SAM_FILES)})")
+
+
+def _raw_table(directory: Path, csv_rel: str, workbook: Path | None, sheet: str) -> pd.DataFrame | None:
+    """A parameter table from CSV (preferred) or from a template workbook sheet."""
+    p = directory / csv_rel
+    if p.exists():
+        df = pd.read_csv(p, index_col=0, comment="#")
+    elif workbook is not None and sheet in pd.ExcelFile(workbook).sheet_names:
+        df = pd.read_excel(workbook, sheet_name=sheet, index_col=0)
+    else:
+        return None
+    df.index = df.index.astype(str).str.strip()
+    df = df.loc[[i not in ("nan", "") for i in df.index]]
+    return df
+
+
+def _read_table(raw: pd.DataFrame | None, index_name: str, defaults: dict, labels: list[str]) -> pd.DataFrame:
+    if raw is not None:
+        df = raw.copy()
     else:
         df = pd.DataFrame(index=labels)
     df.index.name = index_name
@@ -124,41 +152,42 @@ class Dataset:
 
     # ------------------------------------------------------------------ load
     @classmethod
-    def load(cls, directory: str | Path, model_overrides: dict | None = None) -> "Dataset":
+    def load(cls, directory: str | Path, model_overrides: dict | None = None, check: bool = True) -> "Dataset":
+        """Load a dataset directory.  The SAM is read from sam.csv, sam.xlsx or a
+        filled template.xlsx (in that order of preference); parameter tables from
+        CSV files or, if absent, from the workbook's sheets.  ``check=False``
+        skips the balance and account checks (used by the validator)."""
         d = Path(directory)
         with open(d / "accounts.yaml") as fh:
             accounts = yaml.safe_load(fh)
-        sam_path = d / "sam.csv" if (d / "sam.csv").exists() else d / "sam.xlsx"
+        sam_path = find_sam(d)
+        wb = sam_path if sam_path.suffix.lower() in (".xlsx", ".xlsm") else None
         sam = read_sam(sam_path)
-        check_balance(sam)
+        if check:
+            check_balance(sam)
         model = MODEL_DEFAULTS
         if (d / "model.yaml").exists():
             with open(d / "model.yaml") as fh:
                 model = _deep_update(model, yaml.safe_load(fh) or {})
         model = _deep_update(model, model_overrides or {})
-        sectors = _read_table(d / "sectors.csv", "sector", SECTOR_DEFAULTS, list(accounts["sectors"]))
-        households = _read_table(d / "households.csv", "household", HOUSEHOLD_DEFAULTS, list(accounts["households"]))
-        governments = _read_table(d / "governments.csv", "government", GOVERNMENT_DEFAULTS, list(accounts["governments"]))
+        sectors = _read_table(_raw_table(d, "sectors.csv", wb, "sectors"), "sector", SECTOR_DEFAULTS,
+                              list(accounts["sectors"]))
+        households = _read_table(_raw_table(d, "households.csv", wb, "households"), "household",
+                                 HOUSEHOLD_DEFAULTS, list(accounts["households"]))
+        governments = _read_table(_raw_table(d, "governments.csv", wb, "governments"), "government",
+                                  GOVERNMENT_DEFAULTS, list(accounts["governments"]))
         tax_structure = {}
         for tax, spec in (accounts.get("taxes") or {}).items():
             if spec.get("base") != "sales":
                 continue
-            f = spec.get("structure", f"tax_structure/{tax}.csv")
-            fp = d / f
-            if fp.exists():
-                ts = pd.read_csv(fp, index_col=0, comment="#")
-                ts.index = ts.index.astype(str).str.strip()
+            ts = _raw_table(d, spec.get("structure", f"tax_structure/{tax}.csv"), wb, structure_sheet_name(tax))
+            if ts is not None:
                 tax_structure[tax] = ts
-        ie = None
-        if (d / "income_elasticities.csv").exists():
-            ie = pd.read_csv(d / "income_elasticities.csv", index_col=0, comment="#")
-            ie.index = ie.index.astype(str).str.strip()
-        cc = None
-        if (d / "capital_coefficients.csv").exists():
-            cc = pd.read_csv(d / "capital_coefficients.csv", index_col=0, comment="#")
-            cc.index = cc.index.astype(str).str.strip()
+        ie = _raw_table(d, "income_elasticities.csv", wb, "income_elasticities")
+        cc = _raw_table(d, "capital_coefficients.csv", wb, "capital_coefficients")
         ds = cls(sam, accounts, model, sectors, households, governments, tax_structure, ie, cc, d)
-        ds.validate()
+        if check:
+            ds.validate()
         return ds
 
     def copy(self) -> "Dataset":

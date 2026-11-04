@@ -18,15 +18,29 @@ class SAMError(ValueError):
     pass
 
 
-def read_sam(path: str | Path, sheet: str | int = 0) -> pd.DataFrame:
-    """Read a SAM from CSV or Excel.  The first column holds row labels."""
+def _is_total_label(lab) -> bool:
+    l = str(lab).strip().lower()
+    return (l in ("row total", "column total", "total", "nan", "") or l.startswith("imbalance")
+            or l.startswith("unnamed:"))
+
+
+def read_sam(path: str | Path, sheet: str | int | None = None) -> pd.DataFrame:
+    """Read a SAM from CSV or Excel.  The first column holds row labels.
+
+    For Excel files the sheet named ``SAM`` is used if present (else the first
+    sheet).  Total and imbalance rows/columns written by the template are dropped.
+    """
     path = Path(path)
     if path.suffix.lower() in (".xlsx", ".xlsm", ".xls"):
+        if sheet is None:
+            names = pd.ExcelFile(path).sheet_names
+            sheet = "SAM" if "SAM" in names else 0
         df = pd.read_excel(path, sheet_name=sheet, index_col=0)
     else:
         df = pd.read_csv(path, index_col=0)
     df.index = df.index.astype(str).str.strip()
     df.columns = df.columns.astype(str).str.strip()
+    df = df.loc[[not _is_total_label(i) for i in df.index], [not _is_total_label(c) for c in df.columns]]
     df = df.apply(pd.to_numeric, errors="coerce").fillna(0.0)
     return canonical(df)
 

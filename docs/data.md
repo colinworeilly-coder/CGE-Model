@@ -1,12 +1,13 @@
 # Data: SAM conventions and parameter files
 
-A dataset is a directory. Only `sam.csv` (or `sam.xlsx`) and `accounts.yaml`
-are required; every other file has documented defaults.
+A dataset is a directory. Only the SAM and `accounts.yaml` are required; every
+other file has documented defaults.
 
 ```
 my_state/
   accounts.yaml               account roles and tax instruments          (required)
-  sam.csv | sam.xlsx          Social Accounting Matrix                   (required)
+  sam.csv | sam.xlsx | template.xlsx
+                              Social Accounting Matrix                   (required)
   model.yaml                  growth, closures, horizon, solver
   sectors.csv                 per-sector elasticities, depreciation, jobs
   households.csv              per-class counts and behavioral parameters
@@ -16,11 +17,62 @@ my_state/
   capital_coefficients.csv    investment-goods composition by destination (optional)
 ```
 
-Run `python -m regcge check --data my_state` after any change. It calibrates
-the model and confirms three things:
-* the benchmark is replicated;
-* the closures are square;
-* the baseline is a balanced-growth path.
+If several SAM files are present, `sam.csv` takes precedence over `sam.xlsx`,
+which takes precedence over `template.xlsx`. A parameter table is read from
+its CSV file if it exists, otherwise from the sheet of the same name in the
+workbook.
+
+## 0. Starting from the template
+
+The quickest route to a usable dataset:
+
+1. **Declare your accounts.** Copy `data/illustrative_state/accounts.yaml` and edit the lists of sectors, factors, household classes, governments and tax instruments (section 2 below).
+2. **Generate the template:**
+
+   ```bash
+   python -m regcge template --accounts my_state/accounts.yaml --out my_state
+   ```
+
+   This writes `my_state/template.xlsx` and a default `model.yaml` (and copies `accounts.yaml` if it lives elsewhere). Use `--format csv` for CSV files, or `--format both`, which puts the CSVs in `my_state/csv/`. An existing workbook is never overwritten unless you add `--force`, so after changing `accounts.yaml`, generate into a new directory and copy your numbers across.
+3. **Fill in the workbook:**
+
+   | Sheet | What to do |
+   |---|---|
+   | **SAM** | Enter flows in the pale-yellow cells only. Grey cells are payments the model does not interpret. Header colours show account types; hover over a header for its role. The *Imbalance* column turns red until an account's row and column totals match. |
+   | **Cell guide** | Explains every block: what goes there, the expected sign, typical data sources. |
+   | **Accounts** | Lists every account's role, tax base and receiving government. |
+   | **sectors**, **households**, **governments**, **tax_structure_&lt;TAX&gt;** | Pre-filled with defaults. The **number of households per class is required**; jobs and marginal income-tax rates (`mtr_<TAX>`) are recommended. **Parameters guide** describes every column. |
+4. **Validate:**
+
+   ```bash
+   python -m regcge validate --data my_state --out my_state/validation.md
+   ```
+
+   The validator lists *every* problem at once, which calibration does not:
+   * structure and labels, and account balance (with the largest gaps);
+   * cells the model cannot interpret, and taxes paid by the wrong kind of account;
+   * sectors with no output or with exports above output;
+   * missing investment, non-positive disposable income, zero-revenue taxes without a receiving government;
+   * missing household counts and other parameter problems.
+
+   It adds plausibility tables: a macro SAM; GSP and its components; taxes as % of GSP; household tax and saving rates; sector trade and labor shares; government budgets; and the out-of-state share of capital income. If there are no errors, it also calibrates the model and checks benchmark replication and closures. The command exits with code 1 when errors are found.
+5. **Fix small imbalances** with `python -m regcge balance` (cross-entropy). Then run `python -m regcge check --data my_state` and your scenarios with `--data my_state`.
+
+To annotate an existing dataset, use `python -m regcge template --from-data data/illustrative_state --out annotated`. The SAM, parameter tables and tax structures are pre-filled, which makes a worked example of a complete template. `--from-sam file.csv` pre-fills only the SAM.
+
+The allowed cells come from one rulebook (`regcge/data/rules.py`), shared by
+the template, the validator and the calibration, so they cannot disagree.
+
+Common validation messages:
+
+| Message | Usual cause and fix |
+|---|---|
+| `X <- H1: households pay governments only through tax accounts` | A fee or tax was booked directly to a government. Route it through a tax account (add one to `accounts.yaml` if needed). |
+| `FED_PIT is a 'income' tax, which can only be paid by: household` | An income-tax payment sits in a sector column. Move it to the household columns, or redeclare the tax with the right base. |
+| `accounts do not balance` | Row ≠ column totals. Fix data errors, then remove residual gaps by cross-entropy. |
+| `has no revenue in the SAM: declare its 'government'` | A tax with zero base-year revenue needs `government:` in `accounts.yaml`. |
+| `exports exceed its output` | Re-exports or a valuation mismatch. Exports must come from in-state production. |
+| `earns capital income but has no investment share` | Leave `sectors.inv_share` blank (proportional to capital income) or give the sector a positive share. |
 
 ## 1. The SAM
 

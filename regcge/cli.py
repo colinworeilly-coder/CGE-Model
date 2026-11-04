@@ -4,6 +4,8 @@
     python -m regcge check [--data DIR]
     python -m regcge mcf [--data DIR] [--taxes ST_SALES LO_PROPB ...] [--recycle transfers|spending]
     python -m regcge balance IN.csv OUT.csv [--method cross_entropy|ras]
+    python -m regcge template --out DIR [--accounts accounts.yaml] [--from-data DIR] [--format excel|csv|both] [--force]
+    python -m regcge validate [--data DIR] [--out report.md] [--no-model]
 """
 
 from __future__ import annotations
@@ -97,6 +99,42 @@ def cmd_balance(a):
     print(f"Balanced SAM written to {a.output}")
 
 
+def cmd_template(a):
+    from .data.template import from_dataset, write_template
+
+    if a.from_data:
+        from .data.dataset import Dataset
+        written = from_dataset(Dataset.load(a.from_data, check=False), a.out, fmt=a.format, overwrite=a.force)
+    else:
+        sam = None
+        if a.from_sam:
+            from .data.sam import read_sam
+            sam = read_sam(a.from_sam)
+        written = write_template(a.accounts, a.out, fmt=a.format, sam=sam, overwrite=a.force)
+    if not a.accounts and not a.from_data:
+        print("No --accounts given: started from the illustrative state's accounts.yaml (edit it, then rerun).")
+    for p in written.values():
+        print(f"wrote {p}")
+    print(f"Next: fill in the template, then run `python -m regcge validate --data {a.out}`")
+
+
+def cmd_validate(a):
+    from .data.validate import validate_dataset
+
+    rep = validate_dataset(a.data, model_check=not a.no_model)
+    md = rep.to_markdown()
+    print(md)
+    if a.out:
+        out = Path(a.out)
+        if out.suffix.lower() == ".xlsx":
+            rep.to_excel(out)
+        else:
+            out.write_text(md)
+        print(f"\nReport written to {out}")
+    if not rep.ok:
+        sys.exit(1)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="regcge", description="Regional tax CGE model")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -123,6 +161,19 @@ def main(argv=None):
     b.add_argument("output")
     b.add_argument("--method", choices=["cross_entropy", "ras"], default="cross_entropy")
     b.set_defaults(func=cmd_balance)
+    t = sub.add_parser("template", help="write a blank, annotated SAM template for an accounts.yaml")
+    t.add_argument("--out", required=True, help="output directory")
+    t.add_argument("--accounts", default=None, help="accounts.yaml (default: illustrative starter)")
+    t.add_argument("--from-sam", default=None, help="pre-fill the SAM sheet from an existing SAM file")
+    t.add_argument("--from-data", default=None, help="export an existing dataset directory into the template")
+    t.add_argument("--format", choices=["excel", "csv", "both"], default="excel")
+    t.add_argument("--force", action="store_true", help="overwrite an existing template / sam.csv")
+    t.set_defaults(func=cmd_template)
+    v = sub.add_parser("validate", help="check a dataset and list every problem at once")
+    v.add_argument("--data", default=DEFAULT_DATA)
+    v.add_argument("--out", default=None, help="write the report (.md or .xlsx)")
+    v.add_argument("--no-model", action="store_true", help="skip the calibration check")
+    v.set_defaults(func=cmd_validate)
     a = ap.parse_args(argv)
     a.func(a)
 
